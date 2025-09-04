@@ -1,0 +1,1 @@
+ALTER TABLE users ADD COLUMN status ENUM('pending', 'active') DEFAULT 'pending';

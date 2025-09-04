@@ -5,78 +5,74 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/joho/godotenv"
 )
 
-type DatabaseConfig struct {
-	// Primary database (MySQL)
-	Primary MySQLConnection `json:"primary"`
-	// Read replica
-	ReadReplica *MySQLConnection `json:"read_replica,omitempty"`
-	// Connection pool settings
-	Pool PoolConfig `json:"pool"`
-	// Mysql spesific settings
-	MySQL MySQLConfig `json:"mysql"`
-	// Migration settings
-	Migration MigrationConfig `json:"migration"`
+type Config struct {
+	Server       ServerConfig   `json:"server"`
+	Database     DatabaseConfig `json:"database"`
+	Logger       LoggerConfig   `json:"logger"`
+	JSONWebToken JWTConfig      `json:"json_web_token"`
 }
 
-type MySQLConnection struct {
-	Host     string
-	Port     string
-	Database string
-	Username string
-	Password string
-
-	// MySQL spesific connection parameters
-	Charset   string
-	Collation string
-	ParseTime bool
-	Loc       string
-	TLS       string
+type ServerConfig struct {
+	Port         int           `json:"port"`
+	Host         string        `json:"host"`
+	ReadTimeout  time.Duration `json:"read_timeout"`
+	WriteTimeout time.Duration `json:"write_timeout"`
+	IdleTimeout  time.Duration `json:"idle_timeout"`
 }
 
-type MySQLConfig struct {
-	// Connection timeout settings
-	Timeout      time.Duration
-	ReadTimeout  time.Duration
-	WriteTimeout time.Duration
-
-	// MySQL spesific settings
-	MultiStatements   bool
-	InterpolateParams bool
-
-	// Transaction isolation levels
-	TxIsolation string
+type LoggerConfig struct {
+	Level  string `json:"level"`
+	Format string `json:"format"`
 }
 
-type PoolConfig struct {
-	MaxOpenConns    int
-	MaxIdleConns    int
-	ConnMaxLifetime time.Duration
-	ConnMaxIdleTime time.Duration
+type JWTConfig struct {
+	JWTSecretKey         string        `json:"jwt_secret_key"`
+	AccessTokenDuration  time.Duration `json:"access_token"`
+	RefreshTokenDuration time.Duration `json:"refresh_token"`
 }
 
-type MigrationConfig struct {
-	Enabled   bool
-	Directory string
-}
-
-func getEnvDurationOrDefault(key string, defaultValue time.Duration) time.Duration {
-	if value := os.Getenv(key); value != "" {
-		if duration, err := time.ParseDuration(value); err == nil {
-			return duration
-		}
+// Load configuration from environment variables
+func Load() (*Config, error) {
+	// Load .env file if it exists
+	if err := godotenv.Load(); err != nil {
+		// Don't fail if .env doesn't exist, just continue
+		fmt.Println("No .env file found, using system environment variables")
 	}
-	return defaultValue
-}
 
-func getEnvBoolOrDefault(key string, defaultValue bool) bool {
-	if value := os.Getenv(key); value != "" {
-		if boolValue, err := strconv.ParseBool(value); err == nil {
-			return boolValue
-		}
+	cfg := &Config{}
+
+	// Load server config
+	cfg.Server = ServerConfig{
+		Port:         getEnvIntOrDefault("SERVER_PORT", 8080),
+		Host:         getEnvOrDefault("SERVER_HOST", "localhost"),
+		ReadTimeout:  getEnvDurationOrDefault("SERVER_READ_TIMEOUT", 30*time.Second),
+		WriteTimeout: getEnvDurationOrDefault("SERVER_WRITE_TIMEOUT", 30*time.Second),
+		IdleTimeout:  getEnvDurationOrDefault("SERVER_IDLE_TIMEOUT", 60*time.Second),
 	}
-	return defaultValue
+
+	// Load database config
+	if err := loadDatabaseConfig(&cfg.Database); err != nil {
+		return nil, fmt.Errorf("failed to load database config: %w", err)
+	}
+
+	// Load logger config
+	cfg.Logger = LoggerConfig{
+		Level:  getEnvOrDefault("LOG_LEVEL", "info"),
+		Format: getEnvOrDefault("LOG_FORMAT", "json"),
+	}
+
+	// Load JWT config
+	cfg.JSONWebToken = JWTConfig{
+		JWTSecretKey:         os.Getenv("JWT_SECRET_KEY"),
+		AccessTokenDuration:  getEnvDurationOrDefault("ACCESS_TOKEN", 30*time.Second),
+		RefreshTokenDuration: getEnvDurationOrDefault("REFRESH_TOKEN", 60*time.Second),
+	}
+
+	return cfg, nil
 }
 
 // Helper functions
@@ -96,87 +92,20 @@ func getEnvIntOrDefault(key string, defaultValue int) int {
 	return defaultValue
 }
 
-// Build MySQL DSN (data source name)
-func (m *MySQLConnection) DSN() string {
-	return fmt.Sprintf(
-		"%s:%s@tcp(%s:%s)/%s?charset=%s&collation=%s&parseTime=%t&loc=%s&tls=%s",
-		m.Username,
-		m.Password,
-		m.Password,
-		m.Host,
-		m.Database,
-		m.Charset,
-		m.Collation,
-		m.ParseTime,
-		m.Loc,
-		m.TLS,
-	)
+func getEnvBoolOrDefault(key string, defaultValue bool) bool {
+	if value := os.Getenv(key); value != "" {
+		if boolValue, err := strconv.ParseBool(value); err == nil {
+			return boolValue
+		}
+	}
+	return defaultValue
 }
 
-// Build MySQL DSN with additional parameteres
-func (m *MySQLConnection) DSNWithParams(mysqlConfig MySQLConfig) string {
-	baseDSN := m.DSN()
-
-	// Add MySQL spesific parameters
-	params := fmt.Sprintf(
-		"&timeout=%s&readTimeout=%s&writeTimeout=%s&multiStatements=%t&interpolateParams=%t",
-		mysqlConfig.Timeout,
-		mysqlConfig.ReadTimeout,
-		mysqlConfig.WriteTimeout,
-		mysqlConfig.MultiStatements,
-		mysqlConfig.InterpolateParams,
-	)
-
-	return baseDSN + params
-}
-
-// Load MySQL configuration from environment
-func loadDatabaseConfig(cfg *DatabaseConfig) error {
-	// Primary database
-	cfg.Primary = MySQLConnection{
-		Host:      getEnvOrDefault("DB_HOST", "localhost"),
-		Port:      os.Getenv("DB_PORT"),
-		Database:  os.Getenv("DB_NAME"),
-		Username:  os.Getenv("DB_USER"),
-		Password:  os.Getenv("DB_PASS"),
-		Charset:   getEnvOrDefault("DB_CHARSET", "utf8mb4"),
-		Collation: getEnvOrDefault("DB_COLLATION", "utf8mb4_unicode_ci"),
-		ParseTime: getEnvBoolOrDefault("DB_PARSE_TIME", true),
-		Loc:       getEnvOrDefault("DB_LOC", "UTC"),
-		TLS:       getEnvOrDefault("DB_TLS", "false"),
+func getEnvDurationOrDefault(key string, defaultValue time.Duration) time.Duration {
+	if value := os.Getenv(key); value != "" {
+		if duration, err := time.ParseDuration(value); err == nil {
+			return duration
+		}
 	}
-	// Validate required fields
-	if cfg.Primary.Database == "" {
-		return fmt.Errorf("DB_NAME is required")
-	}
-	if cfg.Primary.Username == "" {
-		return fmt.Errorf("DB_USER is required")
-	}
-	if cfg.Primary.Password == "" {
-		return fmt.Errorf("DB_PASS is required")
-	}
-
-	// MySQL spesific configuration
-	cfg.MySQL = MySQLConfig{
-		Timeout:           getEnvDurationOrDefault("DB_TIMEOUT", 10*time.Second),
-		ReadTimeout:       getEnvDurationOrDefault("DB_READ_TIMEOUT", 30*time.Second),
-		WriteTimeout:      getEnvDurationOrDefault("DB_WRITE_TIMEOUT", 30*time.Second),
-		MultiStatements:   getEnvBoolOrDefault("DB_MULTI_STATEMENTS", false),
-		InterpolateParams: getEnvBoolOrDefault("DB_INTERPOLATE_PARAMS", true),
-		TxIsolation:       getEnvOrDefault("DB_TX_ISOLATION", "READ-COMMITED"),
-	}
-	// Pool Configuration
-	cfg.Pool = PoolConfig{
-		MaxOpenConns:    getEnvIntOrDefault("DB_MAX_OPEN_CONNS", 25),
-		MaxIdleConns:    getEnvIntOrDefault("DB_MAX_IDLE_CONNS", 5),
-		ConnMaxLifetime: getEnvDurationOrDefault("DB_CONN_MAX_LIFETIME", 5*time.Second),
-		ConnMaxIdleTime: getEnvDurationOrDefault("DB_CONN_MAX_IDLE_TIME", 1*time.Second),
-	}
-	// Migration configuration
-	cfg.Migration = MigrationConfig{
-		Enabled:   getEnvBoolOrDefault("DB_MIGRATION_ENABLED", true),
-		Directory: getEnvOrDefault("DB_MIGRATION_DIR", "migrations"),
-	}
-
-	return nil
+	return defaultValue
 }
