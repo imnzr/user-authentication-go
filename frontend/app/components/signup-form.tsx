@@ -80,7 +80,7 @@ export function SignUpForm({
               <Input
                 id="password"
                 type="password"
-                placeholder=""
+                placeholder="Enter your password"
                 required
               />
             </div>

@@ -85,7 +85,7 @@ export function LoginForm({
               <Input
                 id="password"
                 type="password"
-                placeholder=""
+                placeholder="Enter your password"
                 required
               />
               <a href="/auth/forgot-password" className="ml-auto inline-block text-sm underline-offset-4 hover:underline">
