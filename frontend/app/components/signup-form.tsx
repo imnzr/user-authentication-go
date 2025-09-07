@@ -1,17 +1,45 @@
+/* eslint-disable @next/next/no-html-link-for-pages */
+"use client"
+
 import { GalleryVerticalEnd } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
+import { useState } from "react"
+import { RegisterUser } from "../api/auth"
 
 export function SignUpForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
+
+  const [error, setError] = useState<string | null >(null)
+  const [loading, setLoading] = useState(false)
+
+  async function handleSubmit(e:React.FormEvent<HTMLFormElement>) {
+      e.preventDefault()
+      setLoading(true)
+      setError(null)
+
+      const form = e.currentTarget
+      const username = (form.elements.namedItem("username") as HTMLInputElement).value
+      const email = (form.elements.namedItem("email") as HTMLInputElement).value
+      const password = (form.elements.namedItem("password") as HTMLInputElement).value
+
+      try {
+        const res = await RegisterUser(username, email, password)
+        alert("Register successfully")
+        window.location.href = "/"
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } catch (err: any) {
+        setError(err.Message || "Something went wrong")
+      }
+  }
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <form>
+      <form onSubmit={handleSubmit}>
         <div className="flex flex-col gap-6">
           <div className="flex flex-col items-center gap-2">
             <a
@@ -26,7 +54,7 @@ export function SignUpForm({
             <h1 className="text-xl font-bold">Welcome to Acme Inc.</h1>
             <div className="text-center text-sm">
               Don&apos;t have an account?{" "}
-              <a href="/auth/login" className="underline underline-offset-4">
+              <a href="/" className="underline underline-offset-4">
                 Sign In
               </a>
             </div>
@@ -47,6 +75,7 @@ export function SignUpForm({
                 placeholder="m@example.com"
                 required
               />
+              {error && <p className="text-red-500 text-sm">{error}</p>}
               <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
@@ -56,7 +85,7 @@ export function SignUpForm({
               />
             </div>
             <Button type="submit" className="w-full">
-              Continue
+              {loading ? "SignUp...": "Continue"}
             </Button>
           </div>
           <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
