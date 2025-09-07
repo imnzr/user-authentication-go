@@ -6,3 +6,9 @@ type UserCreateRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
+
+// Request Login User
+type UserLoginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}

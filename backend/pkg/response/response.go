@@ -37,3 +37,14 @@ func SendError(c *fiber.Ctx, statusCode int, data interface{}, message string) e
 	}
 	return c.Status(statusCode).JSON(response)
 }
+
+// Send Token Response
+type TokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+}
+
+type UserProfileResponse struct {
+	Username string `json:"username"`
+	Email    string `json:"email"`
+}

@@ -14,6 +14,7 @@ type Config struct {
 	Database     DatabaseConfig `json:"database"`
 	Logger       LoggerConfig   `json:"logger"`
 	JSONWebToken JWTConfig      `json:"json_web_token"`
+	RedisCfg     RedisConfig
 }
 
 type ServerConfig struct {
@@ -33,6 +34,13 @@ type JWTConfig struct {
 	JWTSecretKey         string        `json:"jwt_secret_key"`
 	AccessTokenDuration  time.Duration `json:"access_token"`
 	RefreshTokenDuration time.Duration `json:"refresh_token"`
+}
+
+type RedisConfig struct {
+	DBUrl     string
+	RedisAddr string
+	RedisPass string
+	RedisDB   int
 }
 
 // Load configuration from environment variables
@@ -70,6 +78,14 @@ func Load() (*Config, error) {
 		JWTSecretKey:         os.Getenv("JWT_SECRET_KEY"),
 		AccessTokenDuration:  getEnvDurationOrDefault("ACCESS_TOKEN", 30*time.Second),
 		RefreshTokenDuration: getEnvDurationOrDefault("REFRESH_TOKEN", 60*time.Second),
+	}
+
+	// Load Redis Config
+	cfg.RedisCfg = RedisConfig{
+		DBUrl:     os.Getenv("REDIS_URL"),
+		RedisAddr: os.Getenv("REDIS_ADDR"),
+		RedisPass: os.Getenv("REDIS_PASS"),
+		RedisDB:   getEnvIntOrDefault("REDIS_DB", 0),
 	}
 
 	return cfg, nil

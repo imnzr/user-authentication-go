@@ -64,18 +64,18 @@ func (u *userRepository) Create(ctx context.Context, user *user.User) error {
 // GetByEmail implements user.Repository.
 func (u *userRepository) GetByEmail(ctx context.Context, email string) (*user.User, error) {
 	query := `
-		SELECT id, username, email, created_at, updated_at FROM users WHERE email = ?
+		SELECT id, username, email, password FROM users WHERE email = ?
 	`
 	user := &user.User{}
 	var err error
 
 	if tx, ok := getTxFromContext(ctx); ok {
 		err = tx.QueryRowContext(ctx, query, email).Scan(
-			&user.Id, &user.Username, &user.Email, &user.CreatedAt, &user.UpdatedAt,
+			&user.Id, &user.Username, &user.Email, &user.Password,
 		)
 	} else {
 		err = u.db.QueryRowContext(ctx, query, email).Scan(
-			&user.Id, &user.Username, &user.Email, &user.CreatedAt, &user.UpdatedAt,
+			&user.Id, &user.Username, &user.Email, &user.Password,
 		)
 	}
 
@@ -100,11 +100,11 @@ func (u *userRepository) GetById(ctx context.Context, userId int) (*user.User, e
 
 	if tx, ok := getTxFromContext(ctx); ok {
 		err = tx.QueryRowContext(ctx, query, userId).Scan(
-			&user.Id, &user.Username, &user.Email, &user.CreatedAt, &user.UpdatedAt,
+			&user.Id, &user.Username, &user.Email, &user.Password,
 		)
 	} else {
 		err = u.db.QueryRowContext(ctx, query, userId).Scan(
-			&user.Id, &user.Username, &user.Email, &user.CreatedAt, &user.UpdatedAt,
+			&user.Id, &user.Username, &user.Email, &user.Password,
 		)
 	}
 

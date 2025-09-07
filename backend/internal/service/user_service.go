@@ -5,12 +5,16 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/imnzr/user-authentication-go/internal/database"
 	"github.com/imnzr/user-authentication-go/internal/domain/user"
+	errorpkg "github.com/imnzr/user-authentication-go/internal/pkg/error_pkg"
+	"github.com/imnzr/user-authentication-go/internal/repository/redis"
 	"github.com/imnzr/user-authentication-go/pkg/auth"
 	"github.com/imnzr/user-authentication-go/pkg/request"
+	"github.com/imnzr/user-authentication-go/pkg/response"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -18,13 +22,15 @@ type service struct {
 	userRepo    user.Repository
 	txManager   database.TxManager
 	authManager auth.AuthManager
+	redisRepo   redis.Client
 }
 
-func NewUserService(userRepo user.Repository, txManager database.TxManager, authManager auth.AuthManager) user.Service {
+func NewUserService(userRepo user.Repository, txManager database.TxManager, authManager auth.AuthManager, redisRepo redis.Client) user.Service {
 	return &service{
 		userRepo:    userRepo,
 		txManager:   txManager,
 		authManager: authManager,
+		redisRepo:   redisRepo,
 	}
 }
 
@@ -126,4 +132,67 @@ func (s *service) VerifyEmail(ctx context.Context, tokenString string) (jwt.MapC
 
 	return claims, nil
 
+}
+
+// LoginUser implements user.Service.
+func (s *service) LoginUser(ctx context.Context, req *request.UserLoginRequest) (*response.TokenResponse, error) {
+	user, err := s.userRepo.GetByEmail(ctx, req.Email)
+	if err != nil {
+		return nil, errorpkg.ErrInvalidCredentials
+	}
+	if user == nil {
+		return nil, errorpkg.ErrInvalidCredentials
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password))
+	if err != nil {
+		return nil, errorpkg.ErrInvalidCredentials
+	}
+
+	// Generate Access Token
+	accessToken, err := s.authManager.GenerateAccessToken(ctx, user.Id, user.Email)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate access token: %w", err)
+	}
+	// Generate Refresh Token
+	refreshToken, err := s.authManager.GenerateRefreshToken(ctx, user.Id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
+	}
+
+	return &response.TokenResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}, nil
+}
+
+// GetUserProfile implements user.Service.
+func (s *service) GetUserProfile(ctx context.Context, userId int) (*response.UserProfileResponse, error) {
+	user, err := s.userRepo.GetById(ctx, userId)
+	if err != nil {
+		return nil, fmt.Errorf("user profile not found")
+	}
+	response := response.UserProfileResponse{
+		Username: user.Username,
+		Email:    user.Email,
+	}
+
+	return &response, nil
+}
+
+// LogoutUser implements user.Service.
+func (s *service) LogoutUser(ctx context.Context, token string, exp int64) error {
+	ttl := time.Until(time.Unix(exp, 0))
+	if ttl <= 0 {
+		ttl = time.Minute // fallback biar ada TTL
+	}
+
+	err := s.redisRepo.Set(ctx, token, "blacklisted", int64(ttl.Seconds()))
+	if err != nil {
+		fmt.Printf("Failed set blacklist: %v\n", err)
+		return err
+	}
+
+	fmt.Printf("Blacklisted token %s with TTL %v\n", token, ttl)
+	return nil
 }

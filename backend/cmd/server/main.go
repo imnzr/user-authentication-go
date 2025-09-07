@@ -13,7 +13,9 @@ import (
 	"github.com/imnzr/user-authentication-go/internal/api/router"
 	"github.com/imnzr/user-authentication-go/internal/config"
 	"github.com/imnzr/user-authentication-go/internal/database"
+	"github.com/imnzr/user-authentication-go/internal/repository/redis"
 	"github.com/imnzr/user-authentication-go/pkg/logger"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -35,6 +37,12 @@ func main() {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
 	defer db.Close()
+
+	// Initialize Redis
+	redisClient := redis.NewRedisClient(cfg.RedisCfg.RedisAddr, cfg.RedisCfg.RedisPass, cfg.RedisCfg.RedisDB)
+	if err := redisClient.Ping(context.Background()); err != nil {
+		logger.Fatal("failed to connect redis", zap.Error(err))
+	}
 
 	// Logger info database connected successfully
 	logger.Info("Database connected successfully")
