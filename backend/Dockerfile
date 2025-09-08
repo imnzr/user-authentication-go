@@ -1,0 +1,28 @@
+# Stage 1: build
+FROM golang:alpine AS builder
+
+# Workspace
+WORKDIR /app
+
+# Copy dependency files
+COPY . .
+
+RUN go mod tidy
+
+# Copy source code
+COPY . .
+
+# Build binary ke /app/dashboard-backend
+RUN CGO_ENABLED=0 GOOS=linux go build -o dashboard-backend ./cmd/server
+
+# Stage 2: runtime
+FROM alpine:latest
+WORKDIR /app
+
+# Copy binary dari builder ke runtime
+COPY --from=builder /app/dashboard-backend .
+
+EXPOSE 8080
+
+# Jalankan binary
+CMD ["./dashboard-backend"]
