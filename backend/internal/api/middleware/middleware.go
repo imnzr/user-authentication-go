@@ -58,7 +58,7 @@ func AuthMiddleware(ctx context.Context, jwtManager auth.AuthManager, cfg config
 
 func CORS() fiber.Handler {
 	return cors.New(cors.Config{
-		AllowOrigins:     "http://localhost:3000",
+		AllowOrigins:     "http://localhost:3001",
 		AllowMethods:     "GET, POST, PUT, DELETE, PATCH, OPTIONS",
 		AllowHeaders:     "Origin, Content-Type, Accept, Authorization, X-Request-ID",
 		AllowCredentials: true,

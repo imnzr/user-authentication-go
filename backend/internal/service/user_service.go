@@ -196,3 +196,20 @@ func (s *service) LogoutUser(ctx context.Context, token string, exp int64) error
 	fmt.Printf("Blacklisted token %s with TTL %v\n", token, ttl)
 	return nil
 }
+
+// ForgotPassword implements user.Service.
+func (s *service) ForgotPassword(ctx context.Context, email string) error {
+	panic("unimplemented")
+	// user, err := s.userRepo.GetByEmail(ctx, email)
+	// if err != nil {
+	// 	return fmt.Errorf("User with email %s not found", email)
+	// }
+
+	// code := fmt.Sprintf("%05d", rand.Intn(100000))
+	// key := "Forgot:" + email
+	// ttl := int64(10 * 60)
+
+	// if err := s.redisRepo.Set(ctx, key, code, ttl); err != nil {
+	// 	return fmt.Errorf("failed to save code to redis: %w", err)
+	// }
+}

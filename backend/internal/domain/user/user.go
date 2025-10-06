@@ -24,6 +24,7 @@ type Repository interface {
 	Create(ctx context.Context, user *User) error
 	GetByEmail(ctx context.Context, email string) (*User, error)
 	GetById(ctx context.Context, userId int) (*User, error)
+	ResetPassword(ctx context.Context, email string) error
 
 	// Verifify User Create
 	ActivateByEmail(ctx context.Context, email string) error
@@ -37,6 +38,8 @@ type Service interface {
 	LoginUser(ctx context.Context, req *request.UserLoginRequest) (*response.TokenResponse, error)
 	LogoutUser(ctx context.Context, token string, exp int64) error
 	VerifyEmail(ctx context.Context, tokenString string) (jwt.MapClaims, error)
+
+	ForgotPassword(ctx context.Context, email string) error
 }
 
 type Controller interface {

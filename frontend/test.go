@@ -1,0 +1,1 @@
+$ chmod 755 nama_file_folder

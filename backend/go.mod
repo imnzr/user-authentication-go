@@ -26,6 +26,8 @@ require (
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
+	github.com/aws/aws-lambda-go v1.49.0
+	github.com/awslabs/aws-lambda-go-api-proxy v0.16.2
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/joho/godotenv v1.5.1
 	golang.org/x/crypto v0.41.0

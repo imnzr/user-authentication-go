@@ -136,3 +136,22 @@ func (u *userRepository) ActivateByEmail(ctx context.Context, email string) erro
 
 	return nil
 }
+
+// ResetPassword implements user.Repository.
+func (u *userRepository) ResetPassword(ctx context.Context, email string) error {
+	query := "UPDATE users SET password = ? WHERE email = ?"
+	res, err := u.db.ExecContext(ctx, query, email)
+	if err != nil {
+		return err
+	}
+
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return fmt.Errorf("no user found or already exist")
+	}
+
+	return nil
+}
