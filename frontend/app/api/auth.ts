@@ -1,4 +1,4 @@
-const API_URL = "/api/v1"
+const API_URL = "192.168.56.104:8080/api/v1"
 
 export type TokenResponse = {
     access_token: string;
